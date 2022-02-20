@@ -19,4 +19,9 @@ public class Publisher {
 	@Id
 	String publisherName;
 
+	@Override
+	public String toString() {
+		return publisherName;
+	}
+
 }

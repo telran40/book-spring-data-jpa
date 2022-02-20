@@ -6,12 +6,14 @@ import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import telran.java40.book.dao.AuthorRepository;
 import telran.java40.book.dao.BookRepository;
 import telran.java40.book.dao.PublisherRepository;
 import telran.java40.book.dto.AuthorDto;
 import telran.java40.book.dto.BookDto;
+import telran.java40.book.dto.exceptions.EntityNotFoundException;
 import telran.java40.book.model.Author;
 import telran.java40.book.model.Book;
 import telran.java40.book.model.Publisher;
@@ -33,6 +35,7 @@ public class BookServiceImpl implements BookService {
 	}
 
 	@Override
+	@Transactional
 	public boolean addBook(BookDto bookDto) {
 		if(bookRepository.existsById(bookDto.getIsbn())) {
 			return false;
@@ -51,51 +54,70 @@ public class BookServiceImpl implements BookService {
 	}
 
 	@Override
-	public BookDto findBookByIsbn(String isbn) {
-		// TODO Auto-generated method stub
-		return null;
+	public BookDto findBookByIsbn(Long isbn) {
+		Book book = bookRepository.findById(isbn).orElseThrow(() -> new EntityNotFoundException());
+		return modelMapper.map(book, BookDto.class);
 	}
 
 	@Override
-	public BookDto removeBook(String isbn) {
-		// TODO Auto-generated method stub
-		return null;
+	@Transactional
+	public BookDto removeBook(Long isbn) {
+		Book book = bookRepository.findById(isbn).orElseThrow(() -> new EntityNotFoundException());
+		bookRepository.delete(book);
+		return modelMapper.map(book, BookDto.class);
 	}
 
 	@Override
-	public BookDto updateBook(String isbn, String title) {
-		// TODO Auto-generated method stub
-		return null;
+	@Transactional
+	public BookDto updateBook(Long isbn, String title) {
+		Book book = bookRepository.findById(isbn).orElseThrow(() -> new EntityNotFoundException());
+		book.setTitle(title);
+		return modelMapper.map(book, BookDto.class);
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public Iterable<BookDto> findBooksByAuthor(String authorName) {
-		// TODO Auto-generated method stub
-		return null;
+		return bookRepository.findByAuthorsName(authorName)
+				.map(b -> modelMapper.map(b, BookDto.class))
+				.collect(Collectors.toList());
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public Iterable<BookDto> findBooksByPublisher(String publisherName) {
-		// TODO Auto-generated method stub
-		return null;
+		return bookRepository.findByPublisherPublisherName(publisherName)
+				.map(b -> modelMapper.map(b, BookDto.class))
+				.collect(Collectors.toList());
 	}
 
 	@Override
-	public Iterable<AuthorDto> findBookAuthors(String isbn) {
-		// TODO Auto-generated method stub
-		return null;
+	public Iterable<AuthorDto> findBookAuthors(Long isbn) {
+		Book book = bookRepository.findById(isbn).orElseThrow(() -> new EntityNotFoundException());
+		return book.getAuthors().stream()
+				.map(a -> modelMapper.map(a, AuthorDto.class))
+				.collect(Collectors.toList());
 	}
 
 	@Override
+	@Transactional(readOnly = true)
 	public Iterable<String> findPublishersByAuthor(String authorName) {
-		// TODO Auto-generated method stub
-		return null;
+//		return bookRepository.findByAuthorsName(authorName)
+//				.map(b -> b.getPublisher().getPublisherName())
+//				.collect(Collectors.toSet());
+		return publisherRepository.findPublisherNameByAuthor(authorName);
 	}
 
 	@Override
+	@Transactional
 	public AuthorDto removeAuthor(String authorName) {
-		// TODO Auto-generated method stub
-		return null;
+		Author author = authorRepository.findById(authorName).orElseThrow(() -> new EntityNotFoundException());
+		bookRepository.findByAuthorsName(authorName)
+						.forEach(b -> bookRepository.delete(b));
+		authorRepository.delete(author);
+		return modelMapper.map(author, AuthorDto.class);
 	}
+
+	
 
 }
